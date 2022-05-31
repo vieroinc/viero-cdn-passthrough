@@ -28,7 +28,7 @@
   },
   "module": "./index.js",
   "bin": {
-    "vieroimageproxy": "cmd.js"
+    "vierocdn": "cmd.js"
   },
   "dependencies": {
     "@viero/common": "^1.6.6",

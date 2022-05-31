@@ -74,7 +74,7 @@ const respondWithError = (err, url, t, res) => {
   res.end();
 };
 
-const genCacheKey = ({ req: { pathParams: { path }, headers: { range } } }) => {
+const genCacheKey = ({ pathParams: { path }, headers: { range } }) => {
   const pathWithoutQuery = path.split('?').shift();
   if (range) {
     return Buffer.from(`${pathWithoutQuery}?${range}`).toString('base64');

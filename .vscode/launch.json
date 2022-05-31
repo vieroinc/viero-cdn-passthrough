@@ -1,31 +1,17 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "viero-cdn-passthrough",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "cwd": "${workspaceFolder}/src/",
-            "program": "${workspaceFolder}/src/index.js",
-            "args": [
-                "-p",
-                "8080",
-                "-c",
-                "/tmp/cache",
-                "-H",
-                "champic-still-001.cdn.eu.viero.tv:https://img.eu.viero.tv",
-                "-H",
-                "champic-motion-001.cdn.eu.viero.tv:https://api.eu.viero.tv",
-                "-H",
-                "localhost:https://api.eu.viero.tv",
-                "-d",
-            ],
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "viero-cdn-passthrough",
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/src/",
+      "program": "${workspaceFolder}/src/index.js",
+      "args": ["-p", "8080", "-c", "/tmp/cache", "-H", "localhost:https://api.eu.viero.tv", "-d"]
+    }
+  ]
 }

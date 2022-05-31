@@ -35,7 +35,8 @@ module.exports = {
     if (log.isInfo()) Object.keys(maps).forEach((key) => log.info(`${key} => ${maps[key].toString()}`));
   },
   fetch: (path, headers) => {
-    const host = headers.host.match(/[a-z0-9\-.]*:/)[0].slice(0, -1);
+    const match = headers.host.match(/[a-z0-9\-.]*:/)[0];
+    const host = match ? match.slice(0, -1) : headers.host;
     const url = `${maps[host].href}${path}`;
     const headersWithHostFixed = {
       ...JSON.parse(JSON.stringify(headers)),

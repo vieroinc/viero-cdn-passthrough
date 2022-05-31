@@ -13,6 +13,7 @@
     "max-len": ["warn", { "code": 120, "tabWidth": 2 }],
     "import/prefer-default-export": "off",
     "no-continue": "warn",
-    "no-param-reassign": "warn"
+    "no-param-reassign": "warn",
+    "yoda": "warn"
   }
 }

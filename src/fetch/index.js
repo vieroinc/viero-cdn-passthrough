@@ -26,7 +26,7 @@ module.exports = {
     // eslint-disable-next-line no-param-reassign
     if (log.isInfo()) log.info('host mapping is set as');
     maps = mapping.reduce((acc, curr) => {
-      const match = (curr).match(/[a-z0-9\-\.]*\:/)[0];
+      const match = (curr).match(/[a-z0-9\-.]*:/)[0];
       if (2 < match.length) {
         acc[match.slice(0, -1)] = new URL(curr.slice(match.length));
       }
@@ -35,23 +35,19 @@ module.exports = {
     if (log.isInfo()) Object.keys(maps).forEach((key) => log.info(`${key} => ${maps[key].toString()}`));
   },
   fetch: (path, headers) => {
-    const host = headers['host'].match(/[a-z0-9\-\.]*\:/)[0].slice(0, -1);
+    const host = headers.host.match(/[a-z0-9\-.]*:/)[0].slice(0, -1);
     const url = `${maps[host].href}${path}`;
-    headers = {
+    const headersWithHostFixed = {
       ...JSON.parse(JSON.stringify(headers)),
       host: maps[host].host,
     };
-    console.log(url, headers);
-    const { connection: trash1, 'keep-alive': trash2, ...keepHeaders } = headers;
+    const { connection: trash1, 'keep-alive': trash2, ...keepHeaders } = headersWithHostFixed;
     return VieroHTTPClient.request({
       url, headers: keepHeaders,
     })
       .then((res) => {
         if (200 <= res.statusCode && res.statusCode < 400) return Promise.all([url, res, res.data()]);
         throw errorCode({ code: res.statusCode, message: res.statusMessage, userData: { url } });
-      }).catch((err) => {
-        debugger;
-        throw err;
       });
   },
 };

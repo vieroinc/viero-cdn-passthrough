@@ -18,6 +18,7 @@ global.Promise = require('bluebird');
 const { resolve } = require('path');
 const { program } = require('commander');
 const { VieroLog } = require('@viero/common/log');
+const { VieroError } = require('@viero/common/error');
 const { VieroHTTPServer } = require('@viero/common-nodejs/http/server/');
 
 program
@@ -25,7 +26,11 @@ program
   .option('-p, --port <port number>', 'TCP port to bind to', '12080')
   .option('-a, --address <address>', 'IP address or host to bind to', '::')
   .requiredOption('-c, --cache <path>', 'the cache directory')
-  .requiredOption('-H, --host <hostFrom:hostTo>', 'the host mapping, can occur multiple times', (map, prev) => [...(prev || []), map]);
+  .requiredOption(
+    '-H, --host <hostFrom:hostTo>',
+    'the host mapping, can occur multiple times',
+    (map, prev) => [...(prev || []), map],
+  );
 program.parse();
 
 const popts = program.opts();
@@ -55,5 +60,3 @@ require('./endpoints')
     }
     process.exit(err.code ? err.code : -1);
   });
-
-

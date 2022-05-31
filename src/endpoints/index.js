@@ -25,16 +25,16 @@ const log = new VieroLog('cdn/endpoints');
 
 const fetchWrite = (cacheKey, path, headers, head) => fetch(path, headers)
   .then(([url, res, fetched]) => to(res.statusCode, res.headers, cacheKey, fetched, head)
-    .then(([statusCode, headers, stream]) => ([url, statusCode, headers, stream])));
+    .then(([statusCode, fHeaders, stream]) => ([url, statusCode, fHeaders, stream])));
 
 const getOrAdd = ({
-  cacheKey, path, headers, head
+  cacheKey, path, headers, head,
 }) => from(cacheKey, head)
-  .then(([statusCode, headers, stream]) => ([statusCode, headers, stream, '>', 'cache']))
+  .then(([statusCode, fHeaders, stream]) => ([statusCode, fHeaders, stream, '>', 'cache']))
   .catch((err) => {
     if (err.code !== 'ENOENT') throw err; // TODO: VieroError/FS
     return fetchWrite(cacheKey, path, headers, head)
-      .then(([url, statusCode, headers, stream]) => ([statusCode, headers, stream, '>', url]));
+      .then(([url, statusCode, fHeaders, stream]) => ([statusCode, fHeaders, stream, '>', url]));
   });
 
 const remove = ({
@@ -44,11 +44,12 @@ const remove = ({
 const respondWithStream = (statusCode, headers, stream, url, sign, source, t, res) => {
   res.statusCode = statusCode;
   Object.entries(headers).forEach(([key, value]) => res.setHeader(key, value));
-  if (!!stream) {
+  if (stream) {
     stream.on('end', () => {
       if (log.isDebug()) log.debug(200, `${Date.now() - t}ms`, url, sign, source);
     });
-    return stream.pipe(res);
+    stream.pipe(res);
+    return;
   }
   res.end();
 };
@@ -73,29 +74,48 @@ const respondWithError = (err, url, t, res) => {
   res.end();
 };
 
-const genCacheKey = (req) => {
-  const path = req.pathParams.path;
+const genCacheKey = ({ req: { pathParams: { path }, headers: { range } } }) => {
   const pathWithoutQuery = path.split('?').shift();
-  const range = req.headers.range;
-  if (!!range) {
+  if (range) {
     return Buffer.from(`${pathWithoutQuery}?${range}`).toString('base64');
   }
   return Buffer.from(`${pathWithoutQuery}`).toString('base64');
 };
 
-const get = ({ cacheKey, path, url, headers, res, head, t = Date.now() }) => Promise
-  .try(() => getOrAdd({ cacheKey, path, headers, head }))
-  .then(([statusCode, headers, stream, sign, source]) => respondWithStream(statusCode, headers, stream, url, sign, source, t, res))
+const get = ({
+  cacheKey, path, url, headers, res, head, t = Date.now(),
+}) => Promise
+  .try(() => getOrAdd({
+    cacheKey, path, headers, head,
+  }))
+  .then(([statusCode, fHeaders, stream, sign, source]) => respondWithStream(
+    statusCode, fHeaders, stream, url, sign, source, t, res,
+  ))
   .catch((err) => respondWithError(err, url, t, res));
-
 
 module.exports = {
 
   register(server) {
-
     const route = server.route('/:path...');
-    route.head(({ req, req: { pathParams: { path }, url, headers }, res, }) => get({ cacheKey: genCacheKey(req), path, url, headers, res, head: true }));
-    route.get(({ req, req: { pathParams: { path }, url, headers }, res, }) => get({ cacheKey: genCacheKey(req), path, url, headers, res, head: false }));
+    route.head(({
+      req,
+      req: { pathParams: { path }, url, headers },
+      res,
+    }) => get({
+      cacheKey: genCacheKey(req), path, url, headers, res, head: true,
+    }));
+    route.get(({
+      req,
+      req: { pathParams: { path }, url, headers },
+      res,
+    }) => get({
+      cacheKey: genCacheKey(req),
+      path,
+      url,
+      headers,
+      res,
+      head: false,
+    }));
 
     server.delete(
       '/:cacheKey',

@@ -58,40 +58,41 @@ const genFilePathBy = (cacheKey) => {
   return [cacheDirectory, 'cache', ...cacheKeyFixedPrefix.match(/.{1,2}/g), cacheKeyFixed].join('/');
 };
 
-const from = (filePath, head = false) => {
-  return open(filePath).then((fd) => {
-    const indexBuffer = Buffer.alloc(INDEX_LENGTH);
-    return fd.read(indexBuffer, 0, INDEX_LENGTH, 0).then(() => {
-      const statusCodeLength = indexBuffer.readUInt32LE(STATUS_CODE_LENGTH_OFFSET);
-      const digestLength = indexBuffer.readUInt32LE(DIGEST_LENGTH_OFFSET);
-      const keepHeadersLength = indexBuffer.readUInt32LE(HEADERS_LENGTH_OFFSET);
-      const contentLength = indexBuffer.readUInt32LE(CONTENT_LENGTH_OFFSET);
+const from = (filePath, head = false) => open(filePath).then((fd) => {
+  const indexBuffer = Buffer.alloc(INDEX_LENGTH);
+  return fd.read(indexBuffer, 0, INDEX_LENGTH, 0).then(() => {
+    const statusCodeLength = indexBuffer.readUInt32LE(STATUS_CODE_LENGTH_OFFSET);
+    const digestLength = indexBuffer.readUInt32LE(DIGEST_LENGTH_OFFSET);
+    const keepHeadersLength = indexBuffer.readUInt32LE(HEADERS_LENGTH_OFFSET);
+    const contentLength = indexBuffer.readUInt32LE(CONTENT_LENGTH_OFFSET);
 
-      return Promise.all([
-        fd.read(Buffer.alloc(statusCodeLength), 0, statusCodeLength, INDEX_LENGTH)
-          .then(({ buffer }) => buffer),
-        fd.read(Buffer.alloc(digestLength), 0, digestLength, INDEX_LENGTH + statusCodeLength)
-          .then(({ buffer }) => buffer),
-        fd.read(Buffer.alloc(keepHeadersLength), 0, keepHeadersLength, INDEX_LENGTH + statusCodeLength + digestLength)
-          .then(({ buffer }) => buffer),
-      ]).then(([statusCodeBuffer, digestBuffer, keepHeadersBuffer]) => {
-        const keepHeaders = JSON.parse(keepHeadersBuffer);
-        const responseHeaders = {
-          ...keepHeaders,
-          etag: digestBuffer.toString(),
-          date: new Date().toUTCString(),
-          ...(!!keepHeaders['content-length'] ? null : { 'content-length': contentLength }),
-        };
-        return [
-          parseInt(statusCodeBuffer.toString(), 10),
-          responseHeaders,
-          // !! below fd is auto-close by default, nothing to do with fd now !!
-          !!head ? null : createReadStream(filePath, { fd, start: INDEX_LENGTH + statusCodeLength + digestLength + keepHeadersLength }),
-        ];
-      });
+    return Promise.all([
+      fd.read(Buffer.alloc(statusCodeLength), 0, statusCodeLength, INDEX_LENGTH)
+        .then(({ buffer }) => buffer),
+      fd.read(Buffer.alloc(digestLength), 0, digestLength, INDEX_LENGTH + statusCodeLength)
+        .then(({ buffer }) => buffer),
+      fd.read(Buffer.alloc(keepHeadersLength), 0, keepHeadersLength, INDEX_LENGTH + statusCodeLength + digestLength)
+        .then(({ buffer }) => buffer),
+    ]).then(([statusCodeBuffer, digestBuffer, keepHeadersBuffer]) => {
+      const keepHeaders = JSON.parse(keepHeadersBuffer);
+      const responseHeaders = {
+        ...keepHeaders,
+        etag: digestBuffer.toString(),
+        date: new Date().toUTCString(),
+        ...(keepHeaders['content-length'] ? null : { 'content-length': contentLength }),
+      };
+      return [
+        parseInt(statusCodeBuffer.toString(), 10),
+        responseHeaders,
+        // !! below fd is auto-close by default, nothing to do with fd now !!
+        head ? null : createReadStream(filePath, {
+          fd,
+          start: INDEX_LENGTH + statusCodeLength + digestLength + keepHeadersLength,
+        }),
+      ];
     });
   });
-};
+});
 
 const to = (filePath, statusCode, headers, buffer, head = false) => digestPool.run(buffer).then((digest) => {
   const statusCodeBuffer = Buffer.from(`${statusCode}`);
@@ -111,7 +112,7 @@ const to = (filePath, statusCode, headers, buffer, head = false) => digestPool.r
         ...keepHeaders,
         date: new Date().toUTCString(),
         etag: digest,
-        ...(!!keepHeaders['content-length'] ? null : { 'content-length': buffer.byteLength }),
+        ...(keepHeaders['content-length'] ? null : { 'content-length': buffer.byteLength }),
       };
       if (head) {
         return [statusCode, responseHeaders, null];
